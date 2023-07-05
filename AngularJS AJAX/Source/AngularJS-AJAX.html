@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="sr" dir="ltr" ng-app="mojaAplikacija">
+  <head>
+    <meta charset="UTF-8">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+    <script>
+        var serialize = function(obj, prefix) {
+            var str = [];
+            for(var p in obj) {
+                if (obj.hasOwnProperty(p)) {
+                var k = prefix ? prefix + "[" + p + "]" : p, v = obj[p];
+                str.push(typeof v == "object" ?
+                    serialize(v, k) :
+                    encodeURIComponent(k) + "=" + encodeURIComponent(v));
+                }
+            }
+            return str.join("&");
+        };
+
+        var app = angular.module('mojaAplikacija', []).controller('kontroler', function($scope, $http) {
+            $scope.ucitavanjePodataka = function() {
+                var parametri = {
+                    komanda: 'citanje'
+                };
+
+                $http.post('core/api.php', parametri, { responseType: 'text' }).then(function(response) {
+                    var xmlText = response.data;
+                    var parser = new DOMParser();
+                    var xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+
+                    var podaciTabele = [];
+                    var ljudi = xmlDoc.getElementsByTagName('covek');
+                    
+                    for (var i = 0; i < ljudi.length; i++) {
+                        var covek = ljudi[i];
+                        var red = {
+                            imePrezime: covek.getElementsByTagName('imePrezime')[0].textContent,
+                            telefon: covek.getElementsByTagName('telefon')[0].textContent
+                        };
+
+                        podaciTabele.push(red);
+                    }
+
+                    $scope.imenik = podaciTabele;
+                }, function(error) {
+                    alert(error);
+                });
+            };
+
+            $scope.upisiPodatke = function() {
+    var imePrezime = document.getElementById('imePrezime').value;
+    var telefon = document.getElementById('telefon').value;
+
+    var parametri = {
+        komanda: 'upis',
+        imePrezime: imePrezime,
+        telefon: telefon
+    };
+
+    $http.post('core/api.php', parametri, { responseType: 'text' }).then(function(response) {
+        // Ovde možete manipulisati odgovorom servera nakon upisa podataka
+        alert('Podaci su uspješno upisani!');
+        // Možete ponovno učitati podatke iz baze kako biste osvežili prikaz
+        $scope.ucitavanjePodataka();
+    }, function(error) {
+        alert(error);
+    });
+};
+
+$scope.obrisiPodatak = function() {
+    var parametri = {
+        komanda: 'brisanje',
+        id: $scope.odabraniZapis.id,
+        imePrezime: $scope.odabraniZapis.imePrezime,
+        telefon: $scope.odabraniZapis.telefon
+    };
+
+    console.log('Parametri:', parametri); // Provjera parametara
+
+    $http.post('core/api.php', parametri, { responseType: 'text' }).then(function(response) {
+        console.log('Odgovor servera:', response.data); // Provera odgovora servera
+
+        // Ovde možete manipulisati odgovorom servera nakon brisanja podataka
+        alert('Podatak je uspješno obrisan!');
+        // Možete ponovno učitati podatke iz baze kako biste osvezili prikaz
+        $scope.ucitavanjePodataka();
+    }, function(error) {
+        console.error('Greška prilikom slanja zahtjeva:', error); // Provera greške
+
+        alert(error);
+    });
+};
+
+
+
+
+
+       
+
+       });
+
+        app.config(function ($httpProvider) {
+   
+            $httpProvider.defaults.transformRequest = function(data){
+                if (data === undefined) {
+                    return data;
+                }
+                return serialize(data);
+            };
+
+            $httpProvider.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+        });
+    </script>
+  </head>
+  <body ng-controller="kontroler">
+    <table>
+        <thead>
+            <th>IME I PREZIME</th>
+            <th>BROJ TELEFONA</th>
+        </thead>
+        <tbody>
+            <tr ng-repeat="zapis in imenik | orderBy:'imePrezime'">
+                <td>{{ zapis.imePrezime }}</td>
+                <td>{{ zapis.telefon}}</td>
+            </tr>
+        </tbody>
+    </table>
+    <button ng-click="ucitavanjePodataka()">Učitaj podatke iz imenika</button>
+
+        <br><br>
+        <div>
+            <input type="text" id="imePrezime" placeholder="Unesite ime i prezime">
+            <input type="text" id="telefon" placeholder="Unesite broj telefona">
+        </div>
+        <button ng-click="upisiPodatke()">Sacuvaj unos</button>
+
+        <br><br>
+  <div>
+    <select ng-model="odabraniZapis" ng-options="zapis as zapis.imePrezime for zapis in imenik">
+      <option value="">Izaberite zapis za brisanje</option>
+    </select>
+    <button ng-click="obrisiPodatak()">Obriši odabrani zapis</button>
+
+  </div>
+  </body>
+</html>
